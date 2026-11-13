@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#120d2e">
+  <title>Pulso Cúbico</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="stage">
+    <canvas id="game" aria-label="Pulso Cúbico"></canvas>
+
+    <!-- Menú principal -->
+    <section id="menu" class="overlay">
+      <div class="menu-inner">
+        <h1 class="logo">PULSO <span>CÚBICO</span></h1>
+        <p class="tagline">Salta al ritmo. Un toque, mil intentos.</p>
+
+        <div id="level-list" class="level-list"></div>
+
+        <div class="menu-row">
+          <div class="panel customize">
+            <h2>Tu icono</h2>
+            <div class="custom-grid">
+              <canvas id="icon-preview" width="170" height="80"></canvas>
+              <div>
+                <div class="swatch-label">Color principal</div>
+                <div id="colors-c1" class="swatches"></div>
+                <div class="swatch-label">Color secundario</div>
+                <div id="colors-c2" class="swatches"></div>
+              </div>
+            </div>
+          </div>
+          <div class="panel help">
+            <h2>Controles</h2>
+            <ul>
+              <li><kbd>Espacio</kbd> / <kbd>↑</kbd> / clic / toque — saltar (mantén para saltar seguido)</li>
+              <li>En la <b>nave</b>: mantén para subir, suelta para bajar</li>
+              <li><b>Orbes</b>: pulsa justo cuando estés encima</li>
+              <li><kbd>Esc</kbd> pausa · <kbd>R</kbd> reiniciar · <kbd>M</kbd> sonido</li>
+              <li>Práctica: <kbd>Z</kbd> poner punto de control · <kbd>X</kbd> quitarlo</li>
+            </ul>
+            <button id="btn-sound" class="btn small">🔊 Sonido: sí</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pausa -->
+    <section id="pause" class="overlay hidden">
+      <div class="dialog">
+        <h2>Pausa</h2>
+        <button id="btn-resume" class="btn primary">▶ Continuar</button>
+        <button id="btn-restart" class="btn">↻ Reiniciar</button>
+        <button id="btn-practice" class="btn">◆ Modo práctica</button>
+        <button id="btn-menu" class="btn">☰ Menú</button>
+      </div>
+    </section>
+
+    <!-- Nivel completado -->
+    <section id="complete" class="overlay hidden">
+      <div class="dialog">
+        <h2 id="complete-title">¡Nivel completado!</h2>
+        <div id="complete-stats" class="stats"></div>
+        <button id="btn-next" class="btn primary">Siguiente nivel ▶</button>
+        <button id="btn-retry" class="btn">↻ Jugar otra vez</button>
+        <button id="btn-menu2" class="btn">☰ Menú</button>
+      </div>
+    </section>
+
+    <!-- Botones en pantalla -->
+    <div id="touch-ui" class="hidden">
+      <button id="btn-pause" class="round-btn" aria-label="Pausa">❚❚</button>
+    </div>
+    <div id="cp-buttons" class="hidden">
+      <button id="btn-cp-add" class="round-btn green" aria-label="Poner punto de control">◆+</button>
+      <button id="btn-cp-del" class="round-btn red" aria-label="Quitar punto de control">◆−</button>
+    </div>
+  </div>
+
+  <script src="js/engine.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
