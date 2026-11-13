@@ -94,6 +94,34 @@
                 <label class="range" for="volume">Volumen <input id="volume" type="range" min="0" max="1" step="0.05"></label>
               </div>
             </div>
+
+            <div class="block jam" id="jam-block">
+              <h2>Jam en línea</h2>
+              <p class="hint" id="jam-hint">Jugad a la vez, cada uno en su dispositivo.</p>
+              <div id="jam-out" class="opt">
+                <div class="row">
+                  <label for="jam-nick" class="lbl">Tu nombre</label>
+                  <input id="jam-nick" class="input grow" maxlength="24" placeholder="Cómo te verán los demás" autocomplete="nickname">
+                </div>
+                <div class="row">
+                  <button id="btn-jam-create" class="btn primary">Crear sala</button>
+                  <span class="muted small-text">o</span>
+                  <input id="jam-code-in" class="input mono code-in" placeholder="CÓDIGO" maxlength="8" aria-label="Código de la sala" autocomplete="off">
+                  <button id="btn-jam-join" class="btn">Unirme</button>
+                </div>
+              </div>
+              <div id="jam-in" class="opt hidden">
+                <div class="row jam-code">Sala <b id="jam-code"></b> <button id="btn-jam-copy" class="btn">Copiar código</button></div>
+                <ul id="jam-list" class="jam-list"></ul>
+                <div id="jam-wait" class="muted small-text"></div>
+                <div class="row">
+                  <button id="btn-jam-start" class="btn primary">Empezar ronda para todos</button>
+                  <button id="btn-jam-leave" class="btn">Salir de la sala</button>
+                </div>
+                <p class="muted small-text">En partida, tu Resonancia (<kbd>Espacio</kbd>) manda una interferencia a los demás: su cinta tiembla 3 segundos.</p>
+              </div>
+              <div id="jam-status" class="status" role="status"></div>
+            </div>
           </div>
 
           <div class="col">
@@ -146,6 +174,7 @@
         <canvas id="res-sky" width="640" height="200" aria-label="Constelación creada con tus aciertos"></canvas>
         <p class="muted small-text">Tu constelación: cada acierto perfecto dejó una estrella.</p>
         <div id="res-players" class="res-players"></div>
+        <div id="res-room" class="res-room hidden"></div>
         <div class="row">
           <input id="res-code" class="input grow mono" readonly aria-label="Código de Jam">
           <button id="btn-copy-res" class="btn">Copiar código</button>
@@ -173,6 +202,7 @@
   <script src="js/chart.js"></script>
   <script src="js/sources.js"></script>
   <script src="js/render.js"></script>
+  <script src="js/jam.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>

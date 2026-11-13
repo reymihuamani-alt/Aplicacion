@@ -1,7 +1,7 @@
 /* Pulso Onda — bucle de juego, juicio de pulsaciones, modos y estudio. */
 (function () {
   'use strict';
-  const { U, R, Chart, Sources } = window;
+  const { U, R, Chart, Sources, Jam } = window;
   const { LANES, clamp, hsl, store } = U;
   const { Hub, Embed, SynthSource, FileSource, EmbedSource } = Sources;
 
@@ -213,6 +213,8 @@
   }
 
   function popup(p, text, color) {
+    p.lastJudge = text;
+    p.judgeN = (p.judgeN || 0) + 1;
     p.popups.push({ text, color, t0: performance.now() });
     if (p.popups.length > 4) p.popups.shift();
   }
@@ -222,6 +224,7 @@
     if (!p || p.fever < 100 || S.screen !== 'play') return;
     p.fever = 0;
     p.feverUntil = performance.now() + 8000;
+    if (Jam.active) Jam.bumpFx();
     S.flash = 0.6;
     popup(p, '¡RESONANCIA!', '#ffd35c');
   }
@@ -300,6 +303,7 @@
   }
   function quitToStudio() {
     if (S.source) S.source.stop();
+    if (Jam.active) Jam.set({ phase: 'lobby' });
     S.screen = 'studio';
     showScreen('studio');
     renderStudio();
@@ -339,6 +343,11 @@
       </div>`;
     }).join('');
     store.set('bests', bests);
+    if (Jam.active) {
+      const g0 = grade(S.players[0]);
+      Jam.set({ phase: 'done', score: S.players[0].score, acc: Math.round(g0.acc * 100), grade: g0.letter, prog: 100 });
+      Jam.flush();
+    }
     let title = reason === 'dead' ? 'El mundo se apagó' : 'Canción completada';
     if (S.players.length === 2 && st.mode === 'duelo') {
       const [a, b] = S.players;
@@ -351,6 +360,7 @@
     $('btn-next-song').classList.toggle('hidden', !(S.queue.length && S.queueIdx < S.queue.length - 1));
     $('res-code').value = currentCode();
     showScreen('results');
+    renderRoomBoard();
     drawResultsSky();
   }
 
@@ -434,6 +444,13 @@
         if (n.state === 0) judge(p, n, 'miss');
       }
     }
+    if (Jam.active) {
+      const p0 = S.players[0];
+      Jam.set({
+        phase: 'play', score: p0.score, combo: p0.combo, energy: Math.round(p0.energy), form: R.formFor(p0.energy),
+        judge: p0.lastJudge || '', judgeN: p0.judgeN || 0, prog: Math.round(clamp(now / S.chart.duration, 0, 1) * 100),
+      });
+    }
     const embedEnd = S.source instanceof EmbedSource && Embed.duration && now >= Embed.duration - 0.4;
     const fileEnd = S.source instanceof FileSource && S.source.ended;
     if (now >= S.chart.duration + 0.3 || embedEnd || fileEnd) {
@@ -484,7 +501,7 @@
       const keys = MODES[st.mode].players === 2 && i === 1 ? KEYS_P2 : KEYS_P1;
       R.drawRibbon(ctx, W, {
         y, notes: p.notes, now, pps: S.chart.diff.pps, charX: L.charX, color: p.dead ? '#3a3550' : ribbonColor,
-        t: now, lv, fever: performance.now() < p.feverUntil, hints: S.chart.diff.hints && st.mode !== 'fusion', keySet: keys,
+        t: now, lv, fever: performance.now() < p.feverUntil, glitch: S.interfereUntil > performance.now() ? 1 : 0, hints: S.chart.diff.hints && st.mode !== 'fusion', keySet: keys,
       });
       const pos = R.drawCharacter(ctx, L.charX, y, {
         form: R.formFor(p.energy), color: performance.now() < p.feverUntil ? hsl(tNow * 200, 100, 70) : hsl(S.world.hue + 180, 90, 72),
@@ -492,6 +509,8 @@
       });
       drawPlayerHud(p, i, y, pos, keys);
     });
+
+    if (Jam.active) drawGhosts(L, tNow, beatPh);
 
     if (L.highway) {
       const p = S.players[0];
@@ -506,6 +525,94 @@
     if (S.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${S.flash * 0.25})`; ctx.fillRect(0, 0, W, H); }
     drawBanner();
     if (S.waiting && S.screen === 'play') drawWaiting();
+  }
+
+  // ---------- jam en línea: fantasmas y marcador ----------
+  const ghostAnim = new Map();
+  function drawGhosts(L, tNow, beatPh) {
+    const others = Jam.others().filter((p) => p.state.phase === 'play' || p.state.phase === 'done').slice(0, 6);
+    const y = L.ribbons[0];
+    others.forEach((p, k) => {
+      const s = p.state;
+      let a = ghostAnim.get(p.id);
+      if (!a || a.n !== s.judgeN) {
+        a = { n: s.judgeN, t0: performance.now(), judge: s.judge };
+        ghostAnim.set(p.id, a);
+      }
+      const hit = a.judge === 'PERFECTO' || a.judge === 'BIEN';
+      const x = L.charX - 52 * (k + 1);
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      R.drawCharacter(ctx, x, y, {
+        form: Number(s.form) || 0, color: hsl(Number(s.hue) || 0, 90, 70), t: tNow, beatPh,
+        anim: hit ? { kind: 'hit', lane: (a.n || 0) % 4, t0: a.t0 } : a.judge === 'FALLO' ? { kind: 'miss', t0: a.t0 } : null,
+      });
+      ctx.globalAlpha = 0.8;
+      ctx.fillStyle = hsl(Number(s.hue) || 0, 90, 75);
+      ctx.font = '600 11px "Inter", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(String(s.nick || '').slice(0, 10), x, y + 22);
+      ctx.restore();
+    });
+    // marcador de la sala
+    const me = S.players[0];
+    const rows = [{ nick: (Jam.state.nick || 'Tú') + ' (tú)', score: me.score, combo: me.combo, hue: Jam.state.hue, judge: me.lastJudge, done: false }]
+      .concat(Jam.others().map((p) => ({ nick: String(p.state.nick || 'Jugador'), score: Number(p.state.score) || 0, combo: Number(p.state.combo) || 0, hue: Number(p.state.hue) || 0, judge: p.state.judge, done: p.state.phase === 'done', lobby: p.state.phase === 'lobby' })))
+      .sort((a, b) => b.score - a.score).slice(0, 7);
+    const x0 = 20, y0 = 74;
+    ctx.fillStyle = 'rgba(5,4,15,0.55)';
+    ctx.fillRect(x0 - 8, y0 - 16, 250, rows.length * 22 + 12);
+    rows.forEach((r, i) => {
+      const yy = y0 + i * 22;
+      ctx.fillStyle = hsl(r.hue || 0, 90, 70);
+      ctx.fillRect(x0, yy - 9, 8, 8);
+      ctx.font = '600 13px "Inter", system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = r.lobby ? 'rgba(255,255,255,0.4)' : '#fff';
+      ctx.fillText(`${i + 1}. ${r.nick.slice(0, 14)}`, x0 + 14, yy);
+      ctx.textAlign = 'right';
+      ctx.fillText(r.lobby ? 'en el estudio' : r.done ? `${r.score.toLocaleString('es')} ✓` : r.score.toLocaleString('es'), x0 + 234, yy);
+    });
+    if (Jam.lost()) {
+      ctx.fillStyle = '#ff6b85';
+      ctx.textAlign = 'left';
+      ctx.fillText('Se perdió la conexión con la sala.', x0, y0 + rows.length * 22 + 8);
+    }
+    // interferencia recibida
+    if (S.interfereUntil > performance.now()) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = hsl(Math.random() * 360, 100, 60, 0.12);
+        ctx.fillRect(0, Math.random() * H, W, 2 + Math.random() * 10);
+      }
+      ctx.restore();
+    }
+  }
+
+  function renderRoomBoard() {
+    const el = $('res-room');
+    if (!Jam.active) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    el.textContent = '';
+    const h = document.createElement('h3');
+    h.textContent = 'Sala ' + Jam.code;
+    el.appendChild(h);
+    const rows = Jam.peers().map((p) => ({ me: p.me, nick: String(p.state.nick || 'Jugador'), score: Number(p.state.score) || 0, phase: p.state.phase, grade: p.state.grade, hue: Number(p.state.hue) || 0, prog: Number(p.state.prog) || 0 }))
+      .sort((a, b) => b.score - a.score);
+    const ol = document.createElement('ol');
+    for (const r of rows) {
+      const li = document.createElement('li');
+      const dot = document.createElement('i');
+      dot.style.background = hsl(r.hue, 90, 65);
+      const name = document.createElement('span');
+      name.textContent = r.nick + (r.me ? ' (tú)' : '');
+      const val = document.createElement('b');
+      val.textContent = r.phase === 'done' ? `${r.score.toLocaleString('es')} · ${r.grade || ''}` : r.phase === 'play' ? `jugando ${r.prog}% · ${r.score.toLocaleString('es')}` : 'en el estudio';
+      li.append(dot, name, val);
+      ol.appendChild(li);
+    }
+    el.appendChild(ol);
   }
 
   function drawTopHud(now) {
@@ -693,7 +800,98 @@
     $('code-out').value = currentCode();
   }
 
+  // ---------- jam en línea: estudio ----------
+  let jamRenderQueued = false;
+  function renderJam() {
+    if (jamRenderQueued) return;
+    jamRenderQueued = true;
+    requestAnimationFrame(() => {
+      jamRenderQueued = false;
+      $('jam-out').classList.toggle('hidden', Jam.active);
+      $('jam-in').classList.toggle('hidden', !Jam.active);
+      if (S.screen === 'results') renderRoomBoard();
+      if (!Jam.active) return;
+      $('jam-code').textContent = Jam.code;
+      $('btn-jam-start').classList.toggle('hidden', !Jam.host);
+      const hostHere = Jam.host || !!Jam.hostPeer();
+      $('jam-wait').textContent = Jam.lost() ? 'Se perdió la conexión con quien creó la sala.'
+        : Jam.host ? 'Elige la música y el modo arriba y pulsa «Empezar». Todos empezarán a la vez con el mismo mundo.'
+        : hostHere ? 'Esperando a que quien creó la sala empiece la ronda…' : 'Conectado. Esperando a quien creó la sala…';
+      const ul = $('jam-list');
+      ul.textContent = '';
+      for (const p of Jam.peers()) {
+        const li = document.createElement('li');
+        const dot = document.createElement('i');
+        dot.style.background = hsl(Number(p.state.hue) || 0, 90, 65);
+        const name = document.createElement('span');
+        name.textContent = String(p.state.nick || 'Jugador') + (p.me ? ' (tú)' : '') + (p.state.host ? ' · anfitrión' : '');
+        const info = document.createElement('small');
+        const ph = p.state.phase;
+        info.textContent = ph === 'play' ? `jugando ${Number(p.state.prog) || 0}%` : ph === 'done' ? `terminó · ${(Number(p.state.score) || 0).toLocaleString('es')}` : 'en el estudio';
+        li.append(dot, name, info);
+        ul.appendChild(li);
+      }
+    });
+  }
+
+  function jamError(e) {
+    $('jam-status').textContent = e && e.message ? e.message : 'No se pudo conectar.';
+    $('jam-status').className = 'status error';
+  }
+
+  function setupJam() {
+    $('jam-nick').value = store.get('nick', '');
+    $('jam-nick').addEventListener('change', (e) => store.set('nick', e.target.value.trim()));
+    const nick = () => $('jam-nick').value.trim() || 'Jugador';
+    $('btn-jam-create').addEventListener('click', async () => {
+      $('jam-status').textContent = 'Creando la sala…'; $('jam-status').className = 'status';
+      try { await Jam.create(nick()); $('jam-status').textContent = 'Sala creada. Pasa el código a tus amigos.'; $('jam-status').className = 'status ok'; }
+      catch (e) { jamError(e); }
+      renderJam();
+    });
+    $('btn-jam-join').addEventListener('click', async () => {
+      $('jam-status').textContent = 'Entrando…'; $('jam-status').className = 'status';
+      try { await Jam.join($('jam-code-in').value, nick()); $('jam-status').textContent = 'Dentro de la sala ' + Jam.code + '.'; $('jam-status').className = 'status ok'; }
+      catch (e) { jamError(e); }
+      renderJam();
+    });
+    $('btn-jam-leave').addEventListener('click', async () => { await Jam.leave(); $('jam-status').textContent = ''; renderJam(); });
+    $('btn-jam-copy').addEventListener('click', () => {
+      try { navigator.clipboard.writeText(Jam.code).then(() => { $('jam-status').textContent = 'Código copiado.'; $('jam-status').className = 'status ok'; }, () => {}); } catch (e) { /* visible igualmente */ }
+    });
+    $('btn-jam-start').addEventListener('click', () => {
+      if (st.source === 'file' || st.source === 'gira') {
+        jamError(new Error('Para jugar en sala usa «Generador», Spotify o YouTube: así todos tienen la misma música.'));
+        return;
+      }
+      if (MODES[st.mode].players === 2) { st.mode = 'cinta'; saveSettings(); renderStudio(); }
+      Jam.startRound(currentCode());
+      startGame(false);
+    });
+    Jam.onUpdate = renderJam;
+    Jam.onStart = (cfg) => {
+      if (S.source) S.source.stop();
+      loadCode(cfg);
+      if (MODES[st.mode].players === 2) st.mode = 'cinta';
+      S.ended = true;
+      startGame(false);
+    };
+    Jam.onFx = (p) => {
+      if (S.screen !== 'play') return;
+      S.interfereUntil = performance.now() + 3000;
+      S.shake = Math.max(S.shake, 0.3);
+      S.banner = { text: '¡Interferencia!', sub: `${String(p.state.nick || 'Alguien').slice(0, 24)} activó su Resonancia`, t0: performance.now(), short: true };
+    };
+    Jam.canUseClaudeRoom().then((inClaude) => {
+      $('jam-hint').textContent = inClaude
+        ? 'Jugad a la vez, cada uno en su dispositivo, dentro de Claude. Comparte esta página con tus amigos (menú Compartir) y pásales el código de la sala.'
+        : 'Jugad a la vez, cada uno en su navegador, con conexión directa. Pasa el código de la sala a tus amigos.';
+    });
+    renderJam();
+  }
+
   function setupStudio() {
+    setupJam();
     document.querySelectorAll('[data-src]').forEach((b) => b.addEventListener('click', () => {
       st.source = b.dataset.src; saveSettings(); renderStudio();
       const link = U.parseLink(st.link);

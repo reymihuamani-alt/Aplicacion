@@ -36,6 +36,14 @@ Un personaje avanza por una cinta de luz. Cada figura se supera con su tecla, ju
 - **Fusión**: la cinta arriba y una autopista de 4 carriles abajo (estilo guitarra), con las mismas teclas.
 - **Jam · Duelo**: dos jugadores en el mismo dispositivo, el mismo mapa, gana quien sume más.
 - **Jam · Dúo**: cooperativo, la canción se reparte (J1 graves y golpes, J2 melodía y agudos).
+- **Jam en línea**: varias personas, cada una en su dispositivo, juegan la misma canción a la vez.
+  Quien crea la sala comparte un código de 5 letras; al pulsar «Empezar ronda para todos», todos arrancan
+  con el mismo mundo. En partida ves a los demás como fantasmas en tu cinta y un marcador en directo, y
+  tu Resonancia les manda una **interferencia** (su cinta tiembla 3 s). Al final, clasificación de la sala.
+  - Dentro de Claude usa la sala compartida de la página: los amigos deben tener la página compartida.
+  - En un navegador normal usa conexión directa entre navegadores (WebRTC con PeerJS y su servidor
+    público de señalización); no hace falta servidor propio.
+  - Para que todos oigan lo mismo, en sala se usa «Generador», Spotify o YouTube (no archivos propios).
 - **Código de Jam**: un texto `ONDA-…` que reproduce exactamente el mismo mundo y mapa en otro equipo.
 
 ## De dónde sale el mapa
@@ -60,5 +68,6 @@ js/analysis.js   análisis de audio (golpes, tempo, secciones)
 js/chart.js      mapa por dificultad y generación de mundos
 js/sources.js    fuentes: generador, archivo, Spotify, YouTube
 js/render.js     dibujo vectorial
+js/jam.js        jam en línea (sala de Claude o WebRTC)
 js/game.js       juego, juicio, modos y estudio
 ```

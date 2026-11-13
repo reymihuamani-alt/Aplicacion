@@ -170,3 +170,18 @@ body.in-game .round { display: block; }
 body.in-game:not(.waiting) #embed-box { opacity: 0; pointer-events: none; }
 
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+
+/* ---------- jam en línea ---------- */
+.block.jam { border-color: rgba(255, 92, 138, 0.35); }
+.code-in { width: 110px; text-transform: uppercase; letter-spacing: 0.15em; }
+.jam-code { font-size: 15px; }
+.jam-code b { font-family: var(--display); font-size: 26px; letter-spacing: 0.18em; color: var(--accent2); }
+.jam-list, .res-room ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.jam-list li, .res-room li {
+  display: flex; align-items: center; gap: 10px; background: rgba(0, 0, 0, 0.35); border-radius: 10px; padding: 8px 10px; min-width: 0;
+}
+.jam-list i, .res-room i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.jam-list span, .res-room span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jam-list small { color: var(--muted); }
+.res-room h3 { margin: 0 0 8px; font-family: var(--display); font-size: 16px; letter-spacing: 0.08em; color: var(--accent2); }
+.res-room b { font-variant-numeric: tabular-nums; }

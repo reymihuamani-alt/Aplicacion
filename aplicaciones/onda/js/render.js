@@ -253,7 +253,8 @@
     // o: { y, notes, now, pps, charX, color, t, lv, fever, hints, keySet, dim }
     const { y, now, pps, charX } = o;
     const w = 64, amp = 46;
-    const wob = (x) => Math.sin(x * 0.018 + o.t * 3.2) * (1.5 + o.lv.mid * 5 + (o.fever ? 4 : 0));
+    const wob = (x) => Math.sin(x * 0.018 + o.t * 3.2) * (1.5 + o.lv.mid * 5 + (o.fever ? 4 : 0) + (o.glitch ? 16 : 0))
+      + (o.glitch ? (Math.random() - 0.5) * 8 : 0);
     const vis = [];
     for (const n of o.notes) {
       const x = charX + (n.t - now) * pps;
