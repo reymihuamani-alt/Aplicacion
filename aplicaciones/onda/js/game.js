@@ -501,7 +501,7 @@
       const keys = MODES[st.mode].players === 2 && i === 1 ? KEYS_P2 : KEYS_P1;
       R.drawRibbon(ctx, W, {
         y, notes: p.notes, now, pps: S.chart.diff.pps, charX: L.charX, color: p.dead ? '#3a3550' : ribbonColor,
-        t: now, lv, fever: performance.now() < p.feverUntil, glitch: S.interfereUntil > performance.now() ? 1 : 0, hints: S.chart.diff.hints && st.mode !== 'fusion', keySet: keys,
+        t: now, lv, fever: performance.now() < p.feverUntil, glitch: S.interfereUntil > performance.now() ? 1 : 0, hints: S.chart.diff.hints && st.mode !== 'fusion' && !document.body.classList.contains('touch'), keySet: keys,
       });
       const pos = R.drawCharacter(ctx, L.charX, y, {
         form: R.formFor(p.energy), color: performance.now() < p.feverUntil ? hsl(tNow * 200, 100, 70) : hsl(S.world.hue + 180, 90, 72),
@@ -964,6 +964,31 @@
   }
 
   if (U.embedsBlocked) $('back-link').classList.add('hidden');
+
+  // ---------- móvil: pantalla completa, instalación y modo sin conexión ----------
+  const markTouch = () => document.body.classList.add('touch');
+  if (navigator.maxTouchPoints > 0 || 'ontouchstart' in window) markTouch();
+  window.addEventListener('touchstart', markTouch, { once: true, passive: true });
+  $('btn-full').addEventListener('click', async () => {
+    try {
+      if (document.fullscreenElement) { await document.exitFullscreen(); return; }
+      await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape').catch(() => {});
+    } catch (e) { /* el navegador no lo permite (p. ej. iPhone): basta con girar el móvil */ }
+  });
+  if (!document.documentElement.requestFullscreen) $('btn-full').classList.add('hidden');
+  let installPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; $('btn-install').classList.remove('hidden'); });
+  $('btn-install').addEventListener('click', async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice.catch(() => {});
+    installPrompt = null;
+    $('btn-install').classList.add('hidden');
+  });
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !U.embedsBlocked) {
+    navigator.serviceWorker.register('../../sw.js', { scope: '../../' }).catch(() => {});
+  }
   Embed.init($('embed-box'));
   setupStudio();
   renderStudio();

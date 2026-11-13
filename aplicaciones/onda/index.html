@@ -9,6 +9,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Space+Grotesk:wght@500;700&display=swap">
   <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="../../manifest.webmanifest">
+  <link rel="icon" href="../../icons/icon-192.png">
+  <link rel="apple-touch-icon" href="../../icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Pulso">
 </head>
 <body>
   <div id="stage">
@@ -22,7 +29,10 @@
             <h1 class="logo">PULSO<span>ONDA</span></h1>
             <p class="tagline">Cada canción crea su propio mundo. Tú lo recorres al ritmo.</p>
           </div>
-          <a class="back" id="back-link" href="../../index.html">← Pulso Cúbico</a>
+          <div class="head-links">
+            <button id="btn-install" class="btn hidden">Instalar app</button>
+            <a class="back" id="back-link" href="../../index.html">← Pulso Cúbico</a>
+          </div>
         </header>
 
         <div class="grid">
@@ -188,6 +198,8 @@
     </section>
 
     <button id="btn-pause" class="round" aria-label="Pausa">❚❚</button>
+    <button id="btn-full" class="round full" aria-label="Pantalla completa">⛶</button>
+    <div id="rotate-hint" aria-hidden="true">Gira el móvil para jugar en grande ↻</div>
     <div id="touch-pad" class="hidden"></div>
 
     <div id="embed-box" class="hidden">

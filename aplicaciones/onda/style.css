@@ -149,7 +149,7 @@ body.in-game .round { display: block; }
   position: absolute; left: 0; right: 0; bottom: max(10px, env(safe-area-inset-bottom, 0px));
   display: flex; justify-content: center; gap: 24px; padding: 0 max(12px, env(safe-area-inset-left, 0px)); pointer-events: none;
 }
-@media (hover: hover) and (pointer: fine) { #touch-pad { display: none !important; } }
+body:not(.touch) #touch-pad { display: none !important; }
 .pad-group { display: flex; gap: 6px; pointer-events: auto; }
 .pad-btn {
   width: 62px; height: 54px; border-radius: 12px; border: 1px solid var(--c, #fff);
@@ -185,3 +185,24 @@ body.in-game:not(.waiting) #embed-box { opacity: 0; pointer-events: none; }
 .jam-list small { color: var(--muted); }
 .res-room h3 { margin: 0 0 8px; font-family: var(--display); font-size: 16px; letter-spacing: 0.08em; color: var(--accent2); }
 .res-room b { font-variant-numeric: tabular-nums; }
+
+/* ---------- móvil ---------- */
+body { touch-action: manipulation; }
+.head-links { display: flex; align-items: center; gap: 14px; }
+.round.full { right: calc(max(12px, env(safe-area-inset-right, 0px)) + 56px); font-size: 20px; }
+#rotate-hint {
+  display: none; position: absolute; left: 50%; top: max(70px, env(safe-area-inset-top, 0px)); transform: translateX(-50%);
+  background: rgba(14, 12, 34, 0.9); border: 1px solid var(--accent); color: var(--text);
+  padding: 8px 14px; border-radius: 999px; font-size: 14px; pointer-events: none; white-space: nowrap;
+}
+@media (orientation: portrait) and (pointer: coarse) {
+  body.in-game #rotate-hint { display: block; }
+}
+@media (pointer: coarse) {
+  .pad-btn { width: 64px; height: 58px; }
+}
+@media (max-height: 430px) and (orientation: landscape) {
+  .pad-btn { width: 56px; height: 48px; }
+  .pad-group { gap: 4px; }
+  #touch-pad { gap: 12px; }
+}
