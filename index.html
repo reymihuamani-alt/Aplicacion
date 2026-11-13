@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Registro de Caja</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Registro de Caja</h1>
+    <div class="mes">
+      <button id="prev" aria-label="Mes anterior">‹</button>
+      <span id="mesTitulo"></span>
+      <button id="next" aria-label="Mes siguiente">›</button>
+    </div>
+    <label class="ir">Ir a fecha
+      <input type="date" id="irFecha">
+    </label>
+  </header>
+
+  <section class="resumen" id="resumenMes"></section>
+
+  <main id="dias"></main>
+
+  <footer class="pie">
+    <button id="exportar">Exportar mes (CSV)</button>
+    <p>Los datos se guardan en este dispositivo.</p>
+  </footer>
+
+  <template id="tplDia">
+    <details class="dia">
+      <summary>
+        <span class="fecha"></span>
+        <span class="neto"></span>
+      </summary>
+      <form class="formDia">
+        <div class="campos">
+          <label>Izipay <input type="number" step="0.01" min="0" name="izipay" inputmode="decimal" placeholder="0.00"></label>
+          <label>Ganancia <input type="number" step="0.01" min="0" name="ganancia" inputmode="decimal" placeholder="0.00"></label>
+          <label>Pérdida <input type="number" step="0.01" min="0" name="perdida" inputmode="decimal" placeholder="0.00"></label>
+          <label>Reposición a caja <input type="number" step="0.01" min="0" name="reposicionCaja" inputmode="decimal" placeholder="0.00"></label>
+          <label>Reposición externo <input type="number" step="0.01" min="0" name="reposicionExterno" inputmode="decimal" placeholder="0.00"></label>
+        </div>
+
+        <h3>Gastos o Retiros</h3>
+        <ul class="movs"></ul>
+        <button type="button" class="agregar">+ Agregar gasto / retiro</button>
+
+        <div class="totales"></div>
+        <div class="acciones">
+          <button type="button" class="borrar">Borrar día</button>
+        </div>
+      </form>
+    </details>
+  </template>
+
+  <template id="tplMov">
+    <li class="mov">
+      <select name="tipo">
+        <option value="gasto">Gasto</option>
+        <option value="retiro">Retiro</option>
+      </select>
+      <input type="text" name="concepto" placeholder="Concepto">
+      <input type="number" step="0.01" min="0" name="monto" inputmode="decimal" placeholder="0.00">
+      <button type="button" class="quitar" aria-label="Quitar">✕</button>
+    </li>
+  </template>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
