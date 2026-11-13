@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05040f">
+  <title>Pulso Onda</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Space+Grotesk:wght@500;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="stage">
+    <canvas id="game" aria-label="Pulso Onda"></canvas>
+
+    <!-- ===== Estudio ===== -->
+    <section id="studio" class="overlay">
+      <div class="studio">
+        <header class="studio-head">
+          <div>
+            <h1 class="logo">PULSO<span>ONDA</span></h1>
+            <p class="tagline">Cada canción crea su propio mundo. Tú lo recorres al ritmo.</p>
+          </div>
+          <a class="back" id="back-link" href="../../index.html">← Pulso Cúbico</a>
+        </header>
+
+        <div class="grid">
+          <div class="col">
+            <div class="block">
+              <h2>1 · Música</h2>
+              <div class="seg five" role="group" aria-label="Origen de la música">
+                <button data-src="synth">Generador</button>
+                <button data-src="file">Mi archivo</button>
+                <button data-src="spotify">Spotify</button>
+                <button data-src="youtube">YouTube</button>
+                <button data-src="gira">Gira</button>
+              </div>
+
+              <div id="opt-synth" class="opt">
+                <p class="hint">Una canción nueva compuesta al momento. Cada semilla es una canción y un mundo distintos.</p>
+                <div class="row">
+                  <label for="seed-input" class="lbl">Semilla</label>
+                  <input id="seed-input" type="number" class="input" min="1">
+                  <button id="btn-dice" class="btn">🎲 Otra</button>
+                </div>
+              </div>
+
+              <div id="opt-file" class="opt hidden">
+                <p class="hint">Analizo tu canción aquí mismo: tempo, golpes de graves, medios y agudos. El mapa sigue la música de verdad.</p>
+                <div class="row">
+                  <label class="btn" for="audio-file">Elegir audio…</label>
+                  <input id="audio-file" type="file" class="file-input" accept="audio/*,.mp3,.ogg,.wav,.m4a,.aac,.flac,.opus">
+                  <span id="file-name" class="muted"></span>
+                </div>
+              </div>
+
+              <div id="opt-link" class="opt hidden">
+                <div class="row">
+                  <input id="link-url" type="url" class="input grow" autocomplete="off" placeholder="https://open.spotify.com/track/…">
+                </div>
+                <div class="row">
+                  <label for="bpm-input" class="lbl">Tempo (BPM)</label>
+                  <input id="bpm-input" type="number" class="input small" min="50" max="220" placeholder="auto">
+                  <button id="btn-tap" class="btn">Toca el ritmo (T)</button>
+                </div>
+                <div id="tap-status" class="muted small-text">Pon la canción en el reproductor y toca al compás 8 veces.</div>
+              </div>
+
+              <div id="opt-gira" class="opt hidden">
+                <p class="hint">Pega varios enlaces de Spotify o YouTube (uno por línea). Cada canción es un mundo nuevo.</p>
+                <textarea id="gira-list" class="input area" rows="4" placeholder="https://open.spotify.com/track/…&#10;https://youtu.be/…"></textarea>
+              </div>
+              <div id="embed-note" class="note hidden"></div>
+            </div>
+
+            <div class="block">
+              <h2>2 · Modo</h2>
+              <div class="seg four" role="group" aria-label="Modo de juego">
+                <button data-mode="cinta">Cinta</button>
+                <button data-mode="fusion">Fusión</button>
+                <button data-mode="duelo">Jam · Duelo</button>
+                <button data-mode="duo">Jam · Dúo</button>
+              </div>
+              <p id="mode-help" class="hint"></p>
+              <div class="seg three" role="group" aria-label="Dificultad">
+                <button data-diff="facil">Fácil</button>
+                <button data-diff="normal">Normal</button>
+                <button data-diff="dificil">Difícil</button>
+              </div>
+              <div class="row options">
+                <label class="check"><input id="relax" type="checkbox"> Sin derrota</label>
+                <label class="range" for="latency">Ajuste de ritmo <input id="latency" type="range" min="-150" max="150" step="5"> <span id="latency-val"></span></label>
+                <label class="range" for="volume">Volumen <input id="volume" type="range" min="0" max="1" step="0.05"></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="col">
+            <div class="block world">
+              <h2>3 · Tu mundo</h2>
+              <canvas id="preview" width="640" height="300"></canvas>
+              <div class="world-name" id="world-name"></div>
+              <div class="muted small-text" id="world-route"></div>
+              <button id="btn-start" class="btn primary big">Crear mundo y jugar</button>
+              <div id="studio-status" class="status" role="status"></div>
+            </div>
+
+            <div class="block">
+              <h2>Figuras</h2>
+              <div id="legend" class="legend"></div>
+              <p class="muted small-text">Jugador 2: <kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd> <kbd>Ñ</kbd> · Resonancia: <kbd>Espacio</kbd> (J2: <kbd>Enter</kbd>) · Pausa: <kbd>Esc</kbd> · Ajuste fino en partida: <kbd>[</kbd> <kbd>]</kbd></p>
+            </div>
+
+            <div class="block">
+              <h2>Código de Jam</h2>
+              <p class="hint">Comparte el código con un amigo: con la misma canción obtendrá exactamente el mismo mundo y mapa, y podréis comparar puntos.</p>
+              <div class="row">
+                <input id="code-out" class="input grow mono" readonly aria-label="Tu código">
+                <button id="btn-code-copy" class="btn">Copiar</button>
+              </div>
+              <div class="row">
+                <input id="code-in" class="input grow mono" placeholder="Pega aquí un código ONDA-…" aria-label="Código de un amigo">
+                <button id="btn-code-load" class="btn">Cargar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Pausa ===== -->
+    <section id="pause" class="overlay dim hidden">
+      <div class="dialog">
+        <h2>Pausa</h2>
+        <button id="btn-resume" class="btn primary">Continuar</button>
+        <button id="btn-quit" class="btn">Volver al estudio</button>
+      </div>
+    </section>
+
+    <!-- ===== Resultados ===== -->
+    <section id="results" class="overlay dim hidden">
+      <div class="dialog wide">
+        <h2 id="res-title"></h2>
+        <div id="res-world" class="muted"></div>
+        <canvas id="res-sky" width="640" height="200" aria-label="Constelación creada con tus aciertos"></canvas>
+        <p class="muted small-text">Tu constelación: cada acierto perfecto dejó una estrella.</p>
+        <div id="res-players" class="res-players"></div>
+        <div class="row">
+          <input id="res-code" class="input grow mono" readonly aria-label="Código de Jam">
+          <button id="btn-copy-res" class="btn">Copiar código</button>
+        </div>
+        <div class="row buttons">
+          <button id="btn-next-song" class="btn primary hidden">Siguiente canción</button>
+          <button id="btn-retry" class="btn primary">Otra vez</button>
+          <button id="btn-studio" class="btn">Estudio</button>
+        </div>
+      </div>
+    </section>
+
+    <button id="btn-pause" class="round" aria-label="Pausa">❚❚</button>
+    <div id="touch-pad" class="hidden"></div>
+
+    <div id="embed-box" class="hidden">
+      <div class="embed-title">Reproductor</div>
+      <div class="embed-slot"></div>
+    </div>
+  </div>
+
+  <script src="js/util.js"></script>
+  <script src="js/synth.js"></script>
+  <script src="js/analysis.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/sources.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

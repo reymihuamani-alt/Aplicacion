@@ -240,3 +240,10 @@ label.btn { display: inline-block; }
 #embed-box iframe { width: 100%; height: 152px; border: 0; border-radius: 10px; display: block; }
 /* durante la partida sigue sonando pero no se ve ni se puede tocar */
 body.in-game #embed-box { opacity: 0; pointer-events: none; }
+
+.new-app {
+  align-self: center; color: var(--text); text-decoration: none; font-size: 14px;
+  border: 1px solid var(--accent2); border-radius: 999px; padding: 6px 14px; margin-top: -6px;
+  background: rgba(255, 95, 183, 0.12);
+}
+.new-app:hover { background: rgba(255, 95, 183, 0.25); }
