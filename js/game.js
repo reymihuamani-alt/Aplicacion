@@ -10,13 +10,15 @@
   const ctx = canvas.getContext('2d');
   canvas.width = W; canvas.height = H;
 
-  const music = new window.Music();
+  const { Store, Soundtrack, parseYouTube, parseSpotify, embedsBlocked } = window.Custom;
+  const music = new Soundtrack(document.getElementById('embed-box'));
   const levels = window.LEVELS.map(parseLevel);
 
   // ---------- guardado ----------
   const SAVE_KEY = 'pulsoCubico.v1';
   const save = (() => {
-    const def = { best: {}, practice: {}, attempts: {}, done: {}, c1: '#7dff5a', c2: '#2ae0ff', muted: false };
+    const def = { best: {}, practice: {}, attempts: {}, done: {}, c1: '#7dff5a', c2: '#2ae0ff', muted: false,
+      musicSource: 'game', musicUrl: '', musicStart: 0, audioName: '', bgName: '', bgDim: 0.35 };
     try { return Object.assign(def, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) { return def; }
   })();
   function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* sin almacenamiento */ } }
@@ -81,6 +83,7 @@
 
   // ---------- flujo ----------
   function startLevel(index, practice) {
+    document.getElementById('music-test').textContent = '▶ Probar';
     G.levelIndex = index;
     G.level = levels[index];
     G.practice = practice;
@@ -139,6 +142,7 @@
 
   function toMenu() {
     music.stop();
+    document.getElementById('music-test').textContent = '▶ Probar';
     G.screen = 'menu';
     G.level = null;
     renderMenu();
@@ -268,7 +272,23 @@
     return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
   }
 
+  // fondo propio (imagen elegida por el jugador)
+  let bgImage = null;
+  function drawCustomBackground(pulse) {
+    const iw = bgImage.naturalWidth, ih = bgImage.naturalHeight;
+    const scale = Math.max(W / iw, H / ih) * 1.06;
+    const dw = iw * scale, dh = ih * scale;
+    // ligero desplazamiento con la cámara para dar sensación de movimiento
+    const extra = dw - W;
+    const shift = extra > 0 ? ((Math.max(0, camX) * TILE * 0.05) % (extra * 2)) : 0;
+    const dx = -(shift > extra ? extra * 2 - shift : shift);
+    ctx.drawImage(bgImage, dx, (H - dh) / 2, dw, dh);
+    ctx.fillStyle = `rgba(0,0,0,${Math.max(0, save.bgDim - pulse * 0.08)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
   function drawBackground(col, pulse) {
+    if (bgImage) { drawCustomBackground(pulse); return; }
     const g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, col.bgTop);
     g.addColorStop(1, col.bgBottom);
@@ -627,6 +647,7 @@
   function showScreen(name) {
     for (const s of screens) document.getElementById(s).classList.toggle('hidden', s !== name);
     const inGame = name === null;
+    document.body.classList.toggle('in-game', inGame);
     document.getElementById('touch-ui').classList.toggle('hidden', !inGame);
     document.getElementById('cp-buttons').classList.toggle('hidden', !(inGame && G.practice));
   }
@@ -712,11 +733,143 @@
   document.getElementById('btn-cp-del').addEventListener('click', () => G.checkpoints.pop());
   document.getElementById('btn-pause').addEventListener('pointerdown', (e) => e.stopPropagation());
 
+  // ---------- fondo y música personalizados ----------
+  function setStatus(id, text, kind) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  function loadBackground(blob) {
+    if (!blob) { bgImage = null; return; }
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => { bgImage = img; };
+    img.onerror = () => { bgImage = null; setStatus('bg-status', 'No se pudo abrir esa imagen. Prueba con un JPG o PNG.', 'error'); };
+    img.src = url;
+  }
+
+  function applyMusic() {
+    music.configure({ source: save.musicSource, url: save.musicUrl, startAt: save.musicStart });
+    renderMusicUi();
+  }
+
+  function renderMusicUi() {
+    const src = save.musicSource;
+    document.querySelectorAll('[data-src]').forEach((b) => {
+      b.classList.toggle('active', b.dataset.src === src);
+      b.setAttribute('aria-checked', String(b.dataset.src === src));
+    });
+    document.getElementById('src-file').classList.toggle('hidden', src !== 'file');
+    document.getElementById('src-url').classList.toggle('hidden', src !== 'youtube' && src !== 'spotify');
+    document.getElementById('src-start').classList.toggle('hidden', src === 'game');
+    const urlInput = document.getElementById('music-url');
+    urlInput.placeholder = src === 'spotify' ? 'https://open.spotify.com/track/…' : 'https://www.youtube.com/watch?v=…';
+    const warn = document.getElementById('embed-warning');
+    let note = '';
+    if (src === 'spotify') note = 'Spotify solo suena completo si has iniciado sesión en Spotify en este navegador; si no, reproduce un fragmento de 30 s.';
+    if ((src === 'youtube' || src === 'spotify') && embedsBlocked) {
+      note = 'Dentro de Claude no se pueden cargar YouTube ni Spotify. Abre el juego en tu navegador (index.html del repositorio) para usarlos, o elige un archivo de audio propio.';
+    }
+    warn.textContent = note;
+    warn.classList.toggle('hidden', !note);
+    if (src === 'file') {
+      setStatus('audio-status', save.audioName ? '♪ ' + save.audioName : 'Aún no has elegido ningún archivo.', save.audioName ? 'ok' : '');
+    }
+    if (src === 'youtube' || src === 'spotify') {
+      const valid = src === 'youtube' ? parseYouTube(save.musicUrl) : parseSpotify(save.musicUrl);
+      if (!save.musicUrl) setStatus('url-status', 'Pega un enlace y pulsa «Usar».', '');
+      else if (valid) setStatus('url-status', src === 'youtube' ? '✔ Vídeo de YouTube listo' : '✔ Enlace de Spotify listo', 'ok');
+      else setStatus('url-status', 'Ese enlace no parece de ' + (src === 'youtube' ? 'YouTube' : 'Spotify') + '.', 'error');
+    }
+  }
+
+  async function setupCustom() {
+    // estado inicial
+    document.getElementById('bg-dim').value = save.bgDim;
+    document.getElementById('music-url').value = save.musicUrl;
+    document.getElementById('music-start').value = save.musicStart || 0;
+    setStatus('bg-status', save.bgName ? '🖼 ' + save.bgName : 'Se usa el fondo de cada nivel.', save.bgName ? 'ok' : '');
+
+    const [bgBlob, audioBlob] = await Promise.all([Store.get('bg'), Store.get('audio')]);
+    if (bgBlob) loadBackground(bgBlob);
+    else if (save.bgName) { save.bgName = ''; persist(); setStatus('bg-status', 'Se usa el fondo de cada nivel.', ''); }
+    if (audioBlob) music.setFile(audioBlob);
+    else if (save.audioName) { save.audioName = ''; persist(); }
+    applyMusic();
+
+    document.getElementById('bg-file').addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      if (!file.type.startsWith('image/')) { setStatus('bg-status', 'Ese archivo no es una imagen.', 'error'); return; }
+      loadBackground(file);
+      save.bgName = file.name;
+      persist();
+      const stored = await Store.set('bg', file);
+      setStatus('bg-status', '🖼 ' + file.name + (stored ? '' : ' (no se guardará al cerrar)'), 'ok');
+    });
+    document.getElementById('bg-clear').addEventListener('click', () => {
+      bgImage = null;
+      save.bgName = '';
+      persist();
+      Store.set('bg', null);
+      setStatus('bg-status', 'Se usa el fondo de cada nivel.', '');
+    });
+    document.getElementById('bg-dim').addEventListener('input', (e) => { save.bgDim = Number(e.target.value); persist(); });
+
+    document.querySelectorAll('[data-src]').forEach((b) => b.addEventListener('click', () => {
+      save.musicSource = b.dataset.src;
+      persist();
+      applyMusic();
+    }));
+    document.getElementById('audio-file').addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      if (!file.type.startsWith('audio/') && !/\.(mp3|ogg|wav|m4a|aac|flac|opus|webm)$/i.test(file.name)) {
+        setStatus('audio-status', 'Ese archivo no es de audio (usa MP3, OGG, WAV, M4A…).', 'error');
+        return;
+      }
+      music.setFile(file);
+      save.audioName = file.name;
+      save.musicSource = 'file';
+      persist();
+      const stored = await Store.set('audio', file);
+      applyMusic();
+      if (!stored) setStatus('audio-status', '♪ ' + file.name + ' (no se guardará al cerrar)', 'ok');
+    });
+    const useUrl = () => {
+      const url = document.getElementById('music-url').value.trim();
+      if (parseYouTube(url)) save.musicSource = 'youtube';
+      else if (parseSpotify(url)) save.musicSource = 'spotify';
+      save.musicUrl = url;
+      persist();
+      applyMusic();
+    };
+    document.getElementById('music-url-ok').addEventListener('click', useUrl);
+    document.getElementById('music-url').addEventListener('keydown', (e) => { if (e.key === 'Enter') useUrl(); });
+    document.getElementById('music-start').addEventListener('change', (e) => {
+      save.musicStart = Math.max(0, Number(e.target.value) || 0);
+      persist();
+      applyMusic();
+    });
+    const testBtn = document.getElementById('music-test');
+    testBtn.addEventListener('click', () => {
+      if (music.playing) { music.stop(); testBtn.textContent = '▶ Probar'; return; }
+      music.ensure();
+      music.play(levels[G.levelIndex].music, 0);
+      testBtn.textContent = '■ Parar';
+    });
+  }
+
   // texto del botón de práctica en pausa
   const observer = new MutationObserver(() => {
     document.getElementById('btn-practice').textContent = G.practice ? '◆ Salir de práctica' : '◆ Modo práctica';
   });
   observer.observe(document.getElementById('pause'), { attributes: true });
+
+  setupCustom();
 
   if (/[?&]debug\b/.test(location.search)) window.__pulso = { G, levels, startLevel };
 

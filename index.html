@@ -32,6 +32,48 @@
               </div>
             </div>
           </div>
+          <div class="panel media">
+            <h2>Fondo y música</h2>
+            <div class="field">
+              <div class="field-label">Fondo</div>
+              <div class="row">
+                <label class="btn small" for="bg-file">Elegir imagen…</label>
+                <input type="file" id="bg-file" accept="image/*" class="file-input">
+                <button id="bg-clear" class="btn small ghost">Quitar fondo</button>
+              </div>
+              <label class="range" for="bg-dim">Oscurecer
+                <input type="range" id="bg-dim" min="0" max="0.85" step="0.05">
+              </label>
+              <div id="bg-status" class="status"></div>
+            </div>
+            <div class="field">
+              <div class="field-label">Música</div>
+              <div class="seg" role="radiogroup" aria-label="Origen de la música">
+                <button class="seg-btn" data-src="game" role="radio">Del juego</button>
+                <button class="seg-btn" data-src="file" role="radio">Mi archivo</button>
+                <button class="seg-btn" data-src="youtube" role="radio">YouTube</button>
+                <button class="seg-btn" data-src="spotify" role="radio">Spotify</button>
+              </div>
+              <div id="src-file" class="sub hidden">
+                <label class="btn small" for="audio-file">Elegir audio (MP3, OGG, WAV…)</label>
+                <input type="file" id="audio-file" accept="audio/*,.mp3,.ogg,.wav,.m4a,.aac,.flac,.opus" class="file-input">
+                <div id="audio-status" class="status"></div>
+              </div>
+              <div id="src-url" class="sub hidden">
+                <div class="row">
+                  <input type="url" id="music-url" class="text-input" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off">
+                  <button id="music-url-ok" class="btn small">Usar</button>
+                </div>
+                <div id="url-status" class="status"></div>
+              </div>
+              <div id="src-start" class="sub row hidden">
+                <label for="music-start" class="inline-label">Empezar en el segundo</label>
+                <input type="number" id="music-start" class="text-input num" min="0" step="1" value="0">
+              </div>
+              <div id="embed-warning" class="status warn hidden"></div>
+              <button id="music-test" class="btn small">▶ Probar</button>
+            </div>
+          </div>
           <div class="panel help">
             <h2>Controles</h2>
             <ul>
@@ -69,6 +111,12 @@
       </div>
     </section>
 
+    <!-- Reproductor de YouTube / Spotify (visible en el menú, oculto al jugar) -->
+    <div id="embed-box" class="hidden">
+      <div class="embed-title">Reproductor de música</div>
+      <div class="embed-slot"></div>
+    </div>
+
     <!-- Botones en pantalla -->
     <div id="touch-ui" class="hidden">
       <button id="btn-pause" class="round-btn" aria-label="Pausa">❚❚</button>
@@ -82,6 +130,7 @@
   <script src="js/engine.js"></script>
   <script src="js/levels.js"></script>
   <script src="js/audio.js"></script>
+  <script src="js/custom.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>
