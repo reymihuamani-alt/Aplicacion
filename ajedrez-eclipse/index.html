@@ -1,0 +1,484 @@
+<title>Ajedrez Eclipse</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: tablero 9×9 como protagonista a la izquierda, panel de mando a la derecha, reglas debajo. Tema "eclipse": Sol (ámbar) contra Luna (plata). */
+:root{
+  --bg:#E9ECF3; --surface:#F7F8FB; --fg:#1A2033; --muted:#596280; --line:#CDD3E2;
+  --accent:#3A3F9E; --accent-ink:#FFFFFF;
+  --tile-a:#C3CADC; --tile-b:#8D96B3;
+  --nuc-core:#141826; --nuc-ring:#E9A23B;
+  --hint:rgba(26,32,51,.42); --hit:#C94A30;
+  --sol:#EBA43E; --sol-ink:#4A2A08; --luna:#E8EDF7; --luna-ink:#1C2742;
+  --f-display:"Unbounded", "Arial Black", system-ui, sans-serif;
+  --f-body:"Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10121C; --surface:#181B29; --fg:#E4E7F1; --muted:#959CB5; --line:#2A2F45;
+  --accent:#A3AAFF; --accent-ink:#10121C;
+  --tile-a:#4C5577; --tile-b:#323A59; --nuc-core:#05060B; --nuc-ring:#F0AE48;
+  --hint:rgba(228,231,241,.5); --hit:#F07A5C; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#10121C; --surface:#181B29; --fg:#E4E7F1; --muted:#959CB5; --line:#2A2F45;
+  --accent:#A3AAFF; --accent-ink:#10121C;
+  --tile-a:#4C5577; --tile-b:#323A59; --nuc-core:#05060B; --nuc-ring:#F0AE48;
+  --hint:rgba(228,231,241,.5); --hit:#F07A5C; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{background:var(--bg)}
+body{color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:24px 48px}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(28px,5vw,46px);line-height:1;margin:0;letter-spacing:-.02em;text-wrap:balance}
+h1 .eclipse{display:inline-block;width:.8em;height:.8em;border-radius:50%;background:var(--nuc-core);
+  box-shadow:0 0 0 .07em var(--nuc-ring),0 0 .35em .05em color-mix(in srgb,var(--nuc-ring) 60%,transparent);vertical-align:-.04em;margin-right:.12em}
+.tag{color:var(--muted);max-width:46ch;margin:0}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:28px;align-items:start}
+@media (max-width:860px){.main{grid-template-columns:minmax(0,1fr)}}
+
+/* Tablero */
+.board-area{display:grid;grid-template-columns:20px minmax(0,1fr);grid-template-rows:minmax(0,1fr) 22px;gap:4px;max-width:640px;width:100%;margin:0 auto}
+.ranks{display:grid;grid-template-rows:repeat(9,1fr);font-family:var(--f-mono);font-size:11px;color:var(--muted);align-items:center;text-align:center}
+.files{grid-column:2;display:grid;grid-template-columns:repeat(9,1fr);font-family:var(--f-mono);font-size:11px;color:var(--muted);text-align:center;align-items:center}
+.board{position:relative;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));grid-template-rows:repeat(9,minmax(0,1fr));aspect-ratio:1;max-width:100%;border-radius:10px;overflow:hidden;
+  box-shadow:0 0 0 3px var(--surface),0 0 0 4px var(--line),0 18px 40px -18px rgba(10,14,30,.45)}
+.cell{position:relative;aspect-ratio:1;min-width:0;min-height:0;border:0;padding:0;margin:0;cursor:pointer;background:var(--tile-a);display:grid;place-items:center;font:inherit;color:inherit}
+.cell.d{background:var(--tile-b)}
+.cell.nuc{background:radial-gradient(circle, var(--nuc-core) 0 31%, var(--nuc-ring) 33% 39%, color-mix(in srgb,var(--nuc-ring) 30%,transparent) 41%, transparent 52%), var(--tile-b)}
+.cell:focus-visible{outline:3px solid var(--accent);outline-offset:-3px;z-index:2}
+.cell.last{box-shadow:inset 0 0 0 999px color-mix(in srgb,var(--accent) 22%,transparent)}
+.cell.sel{box-shadow:inset 0 0 0 3px var(--accent),inset 0 0 0 999px color-mix(in srgb,var(--accent) 18%,transparent)}
+.cell.danger .pc{animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{50%{filter:drop-shadow(0 0 8px var(--hit)) drop-shadow(0 0 2px var(--hit))}}
+.pc{width:84%;height:84%;filter:drop-shadow(0 3px 2px rgba(0,0,0,.28));transition:transform .15s ease;pointer-events:none}
+.cell:hover .pc{transform:translateY(-2px)}
+.mark{position:absolute;inset:0;pointer-events:none;display:grid;place-items:center}
+.mark.mv::after{content:"";width:24%;height:24%;border-radius:50%;background:var(--hint)}
+.mark.cp::after{content:"";width:86%;height:86%;border-radius:50%;box-shadow:inset 0 0 0 4px var(--hit)}
+.mark.sh::before,.mark.sh::after{content:"";position:absolute;background:var(--hit)}
+.mark.sh::before{width:3px;height:70%}
+.mark.sh::after{height:3px;width:70%}
+.mark.sh{background:radial-gradient(circle, transparent 0 30%, color-mix(in srgb,var(--hit) 22%,transparent) 31% 40%, transparent 41%)}
+.shield{position:absolute;right:4%;top:4%;width:26%;height:26%;pointer-events:none}
+.flash{animation:flash .5s ease-out}
+@keyframes flash{0%{box-shadow:inset 0 0 0 999px color-mix(in srgb,var(--hit) 60%,transparent)}100%{box-shadow:inset 0 0 0 999px transparent}}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;background:color-mix(in srgb,var(--nuc-core) 55%,transparent);backdrop-filter:blur(2px);z-index:5;padding:16px}
+.overlay .card{background:var(--surface);color:var(--fg);border-radius:14px;padding:22px 24px;text-align:center;max-width:320px;box-shadow:0 20px 50px -20px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:10px;align-items:center}
+.overlay h2{font-family:var(--f-display);font-size:22px;margin:0;line-height:1.15}
+.overlay p{margin:0;color:var(--muted)}
+
+/* Panel */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.turn{display:flex;align-items:center;gap:12px}
+.turn svg{width:44px;height:44px;flex:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+.turn .who{font-family:var(--f-display);font-weight:700;font-size:18px;line-height:1.1}
+.turn .sub{color:var(--muted);font-size:13px}
+.label{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg.three{grid-template-columns:1fr 1fr 1fr}
+.seg button{border:0;background:transparent;color:var(--fg);font:600 13px var(--f-body);padding:8px 6px;border-radius:7px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.seg button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{flex:1;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:600 14px var(--f-body);padding:10px 12px;border-radius:10px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.tray{display:flex;flex-wrap:wrap;gap:2px;min-height:26px;align-items:center}
+.tray svg{width:24px;height:24px}
+.tray .none{color:var(--muted);font-size:13px}
+.log{font-family:var(--f-mono);font-size:12.5px;max-height:190px;overflow:auto;border-top:1px solid var(--line);padding-top:8px;display:grid;grid-template-columns:2.4em 1fr 1fr;gap:2px 8px;font-variant-numeric:tabular-nums}
+.log .n{color:var(--muted)}
+.log .empty{grid-column:1/-1;color:var(--muted);font-family:var(--f-body)}
+
+/* Reglas */
+.rules h2{font-family:var(--f-display);font-size:22px;margin:0 0 4px}
+.rules > p{margin:0 0 16px;color:var(--muted);max-width:65ch}
+.laws{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
+@media (max-width:760px){.laws{grid-template-columns:minmax(0,1fr)}}
+.law{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--surface)}
+.law h3{margin:0 0 4px;font-size:15px}
+.law p{margin:0;color:var(--muted);font-size:14px}
+.pieces{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:4px 20px}
+.piece{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;padding:10px 0;border-bottom:1px solid var(--line);align-items:start}
+.piece svg{width:44px;height:44px}
+.piece h3{margin:0;font-size:15px}
+.piece h3 span{font-family:var(--f-mono);font-size:11px;color:var(--muted);font-weight:400;margin-left:6px}
+.piece p{margin:2px 0 0;color:var(--muted);font-size:14px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1><span class="eclipse" aria-hidden="true"></span> Ajedrez Eclipse</h1>
+    <p class="tag">Ajedrez reinventado en 9×9: el Sol contra la Luna, arqueros que disparan, torres que escudan y un Núcleo central que da la victoria.</p>
+  </header>
+
+  <section class="main">
+    <div class="board-area">
+      <div class="ranks" id="ranks"></div>
+      <div class="board" id="board" role="grid" aria-label="Tablero 9 por 9"></div>
+      <div class="files" id="files"></div>
+    </div>
+
+    <aside class="panel">
+      <div class="turn" id="turn"></div>
+      <div>
+        <p class="label">Modo</p>
+        <div class="seg" id="mode">
+          <button id="mode-ia" data-v="ia">Contra la IA</button>
+          <button id="mode-local" data-v="local">Dos jugadores</button>
+        </div>
+      </div>
+      <div id="levelBox">
+        <p class="label">Nivel de la Luna</p>
+        <div class="seg three" id="level">
+          <button id="lv-1" data-v="1">Fácil</button>
+          <button id="lv-2" data-v="2">Normal</button>
+          <button id="lv-3" data-v="3">Difícil</button>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="newGame">Nueva partida</button>
+        <button class="btn" id="undo">Deshacer</button>
+      </div>
+      <div>
+        <p class="label">Capturas del Sol</p>
+        <div class="tray" id="tray0"></div>
+      </div>
+      <div>
+        <p class="label">Capturas de la Luna</p>
+        <div class="tray" id="tray1"></div>
+      </div>
+      <div>
+        <p class="label">Partida</p>
+        <div class="log" id="log"></div>
+      </div>
+    </aside>
+  </section>
+
+  <section class="rules">
+    <h2>Cómo se juega</h2>
+    <p>Mueve el Sol primero. Toca una ficha para ver sus jugadas: punto para moverse, anillo para capturar y mira para disparar. No existe el jaque: puedes dejar al Monarca en peligro, pero si lo capturan, pierdes.</p>
+    <div class="laws">
+      <div class="law"><h3>Victoria por eclipse</h3><p>Lleva tu Monarca al Núcleo (e5). Si sigue ahí cuando vuelve tu turno, ganas al instante. También ganas capturando al Monarca rival.</p></div>
+      <div class="law"><h3>Escudo de Bastión</h3><p>Toda ficha pegada en línea recta (arriba, abajo o a los lados) a un Bastión de su color no puede ser capturada. En el Núcleo los escudos no funcionan.</p></div>
+      <div class="law"><h3>Tablas</h3><p>Si pasan 80 jugadas seguidas sin capturas ni coronaciones, la partida termina en tablas. Un bando sin jugadas posibles pierde.</p></div>
+    </div>
+    <div class="pieces" id="pieces"></div>
+  </section>
+</div>
+
+<script>
+(function(){
+const NUC = 40;
+const FILES = "abcdefghi";
+const VAL = {M:0,O:9,B:5,E:4,S:4,A:4,P:1};
+const NAMES = {M:"Monarca",O:"Oráculo",A:"Arquero",B:"Bastión",E:"Espectro",S:"Saltador",P:"Brote"};
+const SIDE = ["Sol","Luna"];
+const D8=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+const ORTH=D8.slice(0,4), DIAG=D8.slice(4);
+const LEAP=[[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1],[2,0],[-2,0],[0,2],[0,-2]];
+const WIN = 100000;
+const on=(r,c)=>r>=0&&r<9&&c>=0&&c<9;
+const sq=i=>FILES[i%9]+((i/9|0)+1);
+
+function initial(){
+  const b=new Array(81).fill(null);
+  const back="BSEAMAESB";
+  for(let c=0;c<9;c++){
+    b[c]={t:back[c],s:0}; b[72+c]={t:back[c],s:1};
+    b[9+c]={t:c===4?"O":"P",s:0}; b[63+c]={t:c===4?"O":"P",s:1};
+  }
+  return b;
+}
+
+function shielded(b,i){
+  if(i===NUC) return false;
+  const p=b[i]; if(!p) return false;
+  const r=i/9|0,c=i%9;
+  for(const[dr,dc] of ORTH){const rr=r+dr,cc=c+dc;
+    if(on(rr,cc)){const q=b[rr*9+cc]; if(q&&q.t==="B"&&q.s===p.s) return true;}}
+  return false;
+}
+const canTake=(b,j,side)=>{const q=b[j];return !!q&&q.s!==side&&!shielded(b,j);};
+
+function gen(b,side){
+  const out=[];
+  for(let i=0;i<81;i++){
+    const p=b[i]; if(!p||p.s!==side) continue;
+    const r=i/9|0,c=i%9;
+    const add=(j,x)=>out.push(Object.assign({f:i,t:j,cap:!!b[j]},x||{}));
+    const slide=(dirs,max)=>{for(const[dr,dc] of dirs){for(let k=1;k<=max;k++){
+      const rr=r+dr*k,cc=c+dc*k; if(!on(rr,cc))break; const j=rr*9+cc;
+      if(!b[j]){add(j);continue;} if(canTake(b,j,side))add(j); break;}}};
+    switch(p.t){
+      case "M": for(const[dr,dc] of D8){const rr=r+dr,cc=c+dc; if(!on(rr,cc))continue; const j=rr*9+cc;
+        if(!b[j]||canTake(b,j,side)) add(j);} break;
+      case "O": slide(D8,3); break;
+      case "B": slide(ORTH,8); break;
+      case "E": for(const[dr,dc] of DIAG){let passed=false;
+        for(let k=1;k<9;k++){const rr=r+dr*k,cc=c+dc*k; if(!on(rr,cc))break; const j=rr*9+cc;
+          if(!b[j]){add(j);continue;}
+          if(canTake(b,j,side)) add(j);
+          if(passed) break; passed=true;}} break;
+      case "S": for(const[dr,dc] of LEAP){const rr=r+dr,cc=c+dc; if(!on(rr,cc))continue; const j=rr*9+cc;
+        if(!b[j]||canTake(b,j,side)) add(j);} break;
+      case "A": for(const[dr,dc] of D8){
+          const r1=r+dr,c1=c+dc; if(on(r1,c1)&&!b[r1*9+c1]) add(r1*9+c1);
+          const r2=r+2*dr,c2=c+2*dc; if(on(r2,c2)&&canTake(b,r2*9+c2,side)) add(r2*9+c2,{shot:true});
+        } break;
+      case "P": {
+        const fw=side===0?1:-1, last=side===0?8:0, rr=r+fw;
+        if(on(rr,c)&&!b[rr*9+c]) add(rr*9+c, rr===last?{promo:true}:null);
+        for(const dc of[-1,1]){
+          if(on(r,c+dc)&&!b[r*9+c+dc]) add(r*9+c+dc);
+          if(on(rr,c+dc)&&canTake(b,rr*9+c+dc,side)) add(rr*9+c+dc, rr===last?{promo:true}:null);
+        }
+      } break;
+    }
+  }
+  return out;
+}
+
+function apply(b,m){
+  const nb=b.slice(); const victim=nb[m.t];
+  if(m.shot){ nb[m.t]=null; }
+  else { const p=nb[m.f]; nb[m.t]=m.promo?{t:"O",s:p.s}:p; nb[m.f]=null; }
+  return [nb,victim];
+}
+function findKing(b,side){for(let i=0;i<81;i++){const p=b[i]; if(p&&p.t==="M"&&p.s===side) return i;} return -1;}
+
+function evaluate(b,side){
+  let s=0;
+  for(let i=0;i<81;i++){const p=b[i]; if(!p) continue;
+    const r=i/9|0,c=i%9, cd=Math.max(Math.abs(r-4),Math.abs(c-4));
+    let v=VAL[p.t];
+    if(p.t==="P") v+=(p.s===0?r:8-r)*0.08;
+    if(p.t==="M") v+=(4-cd)*0.18; else v+=(4-cd)*0.04;
+    if(p.t!=="M"&&shielded(b,i)) v+=0.06;
+    s+= p.s===side?v:-v;
+  }
+  const ok=b[NUC]; if(ok&&ok.t==="M"&&ok.s!==side) s-=30;
+  return s;
+}
+function order(ms,b){
+  for(const m of ms){const v=b[m.t]; m.o = v ? (v.t==="M"?1000:VAL[v.t]*10) - (m.shot?0:VAL[b[m.f].t]) : (m.promo?50:0);}
+  ms.sort((a,b)=>b.o-a.o);
+}
+function search(b,side,depth,alpha,beta,ply){
+  const k=findKing(b,side);
+  if(k<0) return -(WIN-ply);
+  if(k===NUC) return WIN-ply;
+  if(depth===0) return evaluate(b,side);
+  const ms=gen(b,side); if(!ms.length) return -(WIN-ply);
+  order(ms,b);
+  let best=-Infinity;
+  for(const m of ms){
+    const v=-search(apply(b,m)[0],1-side,depth-1,-beta,-alpha,ply+1);
+    if(v>best)best=v; if(v>alpha)alpha=v; if(alpha>=beta)break;
+  }
+  return best;
+}
+function pickMove(b,side,level){
+  const ms=gen(b,side); if(!ms.length) return null;
+  order(ms,b);
+  const depth=level, noise=level===1?0.9:level===2?0.15:0.04;
+  let scored=[];
+  for(const m of ms){
+    const v=-search(apply(b,m)[0],1-side,depth-1,-Infinity,Infinity,1);
+    scored.push([v+Math.random()*noise,m]);
+  }
+  scored.sort((a,b)=>b[0]-a[0]);
+  return scored[0][1];
+}
+
+/* ---------- Glifos ---------- */
+function glyph(t,s){
+  const fill=s===0?"var(--sol)":"var(--luna)", ink=s===0?"var(--sol-ink)":"var(--luna-ink)";
+  const R=t==="P"?33:41;
+  let e="";
+  switch(t){
+    case "M": {
+      let rays=""; for(let k=0;k<8;k++){const a=k*Math.PI/4, x1=50+Math.cos(a)*23,y1=50+Math.sin(a)*23,x2=50+Math.cos(a)*31,y2=50+Math.sin(a)*31;
+        rays+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${ink}" stroke-width="5" stroke-linecap="round"/>`;}
+      e=`<circle cx="50" cy="50" r="15" fill="${ink}"/><circle cx="50" cy="50" r="19" fill="none" stroke="${ink}" stroke-width="2.5"/>${rays}`; break; }
+    case "O": e=`<path d="M22 50 Q50 25 78 50 Q50 75 22 50Z" fill="none" stroke="${ink}" stroke-width="5" stroke-linejoin="round"/><circle cx="50" cy="50" r="9" fill="${ink}"/><circle cx="53" cy="47" r="2.6" fill="${fill}"/>`; break;
+    case "A": e=`<path d="M40 24 Q68 50 40 76" fill="none" stroke="${ink}" stroke-width="5" stroke-linecap="round"/><line x1="40" y1="24" x2="40" y2="76" stroke="${ink}" stroke-width="2"/><line x1="28" y1="50" x2="70" y2="50" stroke="${ink}" stroke-width="4" stroke-linecap="round"/><path d="M78 50 L66 43 L66 57Z" fill="${ink}"/>`; break;
+    case "B": e=`<path d="M32 72 L32 40 L38 40 L38 30 L46 30 L46 40 L54 40 L54 30 L62 30 L62 40 L68 40 L68 72Z" fill="${ink}"/><path d="M45 72 L45 60 Q50 54 55 60 L55 72Z" fill="${fill}"/>`; break;
+    case "E": e=`<path d="M33 73 L33 47 Q33 28 50 28 Q67 28 67 47 L67 73 L61 67 L55.5 73 L50 67 L44.5 73 L39 67Z" fill="${ink}" opacity=".9"/><circle cx="43.5" cy="46" r="4.2" fill="${fill}"/><circle cx="56.5" cy="46" r="4.2" fill="${fill}"/>`; break;
+    case "S": e=`<polyline points="26,64 40,36 54,64 70,36" fill="none" stroke="${ink}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="70" cy="36" r="5" fill="${ink}"/>`; break;
+    case "P": e=`<line x1="50" y1="70" x2="50" y2="47" stroke="${ink}" stroke-width="4.5" stroke-linecap="round"/><path d="M50 52 Q36 50 33 36 Q47 35 50 50Z" fill="${ink}"/><path d="M50 47 Q53 32 67 30 Q66 45 50 49Z" fill="${ink}"/>`; break;
+  }
+  return `<svg class="pc" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="${R}" fill="${fill}" stroke="${ink}" stroke-width="3"/><circle cx="50" cy="50" r="${R-6}" fill="none" stroke="${ink}" stroke-width="1" opacity=".35"/>${e}</svg>`;
+}
+const shieldSvg=s=>`<svg class="shield" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 L17.5 4.5 L17 11 Q15.5 16.5 10 18.5 Q4.5 16.5 3 11 L2.5 4.5Z" fill="${s===0?"var(--sol)":"var(--luna)"}" stroke="${s===0?"var(--sol-ink)":"var(--luna-ink)"}" stroke-width="1.6"/></svg>`;
+
+/* ---------- Estado ---------- */
+let G;
+function fresh(mode,level){
+  return {board:initial(),turn:0,sel:-1,moves:[],last:null,log:[],hist:[],winner:null,reason:"",quiet:0,
+    caps:[[],[]],mode:mode||"ia",level:level||2,thinking:false,flash:-1};
+}
+
+const boardEl=document.getElementById("board");
+const cells=[];
+for(let row=8;row>=0;row--) for(let c=0;c<9;c++){
+  const i=row*9+c, btn=document.createElement("button");
+  btn.className="cell"+(((row+c)%2===0)?" d":"")+(i===NUC?" nuc":"");
+  btn.id="c-"+sq(i); btn.addEventListener("click",()=>clickCell(i));
+  boardEl.appendChild(btn); cells[i]=btn;
+}
+const overlay=document.createElement("div"); overlay.className="overlay"; overlay.hidden=true; boardEl.appendChild(overlay);
+document.getElementById("ranks").innerHTML=[9,8,7,6,5,4,3,2,1].map(n=>`<span>${n}</span>`).join("");
+document.getElementById("files").innerHTML=[...FILES].map(f=>`<span>${f}</span>`).join("");
+
+function clickCell(i){
+  if(G.winner||G.thinking) return;
+  if(G.mode==="ia"&&G.turn===1) return;
+  if(G.sel>=0){
+    const m=G.moves.find(m=>m.t===i);
+    if(m){ doMove(m); return; }
+  }
+  const p=G.board[i];
+  if(p&&p.s===G.turn&&G.sel!==i){ G.sel=i; G.moves=gen(G.board,G.turn).filter(m=>m.f===i); }
+  else { G.sel=-1; G.moves=[]; }
+  render();
+}
+
+function notation(b,m){
+  const p=b[m.f], L=p.t==="P"?"":p.t;
+  if(m.shot) return `${L}${sq(m.f)}➶${sq(m.t)}`;
+  return `${L}${sq(m.f)}${m.cap?"×":"–"}${sq(m.t)}${m.promo?"=O":""}`;
+}
+
+function doMove(m){
+  G.hist.push({board:G.board,turn:G.turn,last:G.last,logLen:G.log.length,quiet:G.quiet,caps:[G.caps[0].slice(),G.caps[1].slice()]});
+  const note=notation(G.board,m);
+  const [nb,victim]=apply(G.board,m);
+  if(victim) G.caps[G.turn].push(victim.t);
+  G.log.push(note);
+  G.quiet=(victim||m.promo)?0:G.quiet+1;
+  G.board=nb; G.last=m; G.turn=1-G.turn; G.sel=-1; G.moves=[];
+  G.flash=m.shot?m.t:-1;
+  const k=findKing(nb,G.turn);
+  if(k<0){G.winner=1-G.turn; G.reason="capturó al Monarca rival";}
+  else if(k===NUC){G.winner=G.turn; G.reason="sostuvo el eclipse en el Núcleo";}
+  else if(!gen(nb,G.turn).length){G.winner=1-G.turn; G.reason="dejó al rival sin jugadas";}
+  else if(G.quiet>=80){G.winner="draw"; G.reason="80 jugadas sin capturas";}
+  render();
+  if(!G.winner&&G.mode==="ia"&&G.turn===1) aiTurn();
+}
+
+function aiTurn(){
+  G.thinking=true; render();
+  setTimeout(()=>{
+    const t0=performance.now();
+    const m=pickMove(G.board,1,G.level);
+    const wait=Math.max(0,420-(performance.now()-t0));
+    setTimeout(()=>{ G.thinking=false; if(m) doMove(m); else render(); },wait);
+  },30);
+}
+
+function undo(){
+  if(G.thinking||!G.hist.length) return;
+  do{
+    const h=G.hist.pop();
+    G.board=h.board; G.turn=h.turn; G.last=h.last; G.log.length=h.logLen; G.quiet=h.quiet; G.caps=h.caps;
+  } while(G.mode==="ia"&&G.turn===1&&G.hist.length);
+  G.winner=null; G.reason=""; G.sel=-1; G.moves=[]; G.flash=-1;
+  render();
+}
+
+function render(){
+  const b=G.board;
+  const mv={}; for(const m of G.moves) mv[m.t]=m.shot?"sh":(m.cap?"cp":"mv");
+  const k=findKing(b,G.turn);
+  let danger=-1;
+  if(k>=0&&!G.winner&&gen(b,1-G.turn).some(m=>m.t===k)) danger=k;
+  for(let i=0;i<81;i++){
+    const p=b[i], el=cells[i];
+    let html=p?glyph(p.t,p.s):"";
+    if(p&&p.t!=="B"&&shielded(b,i)) html+=shieldSvg(p.s);
+    if(mv[i]) html+=`<span class="mark ${mv[i]}"></span>`;
+    el.innerHTML=html;
+    el.classList.toggle("sel",i===G.sel);
+    el.classList.toggle("last",!!G.last&&(i===G.last.f||i===G.last.t)&&i!==G.sel);
+    el.classList.toggle("danger",i===danger);
+    el.classList.remove("flash");
+    const lbl=sq(i)+(p?`, ${NAMES[p.t]} de ${SIDE[p.s]}`:", vacía")+(i===NUC?", Núcleo":"")+(mv[i]?", jugada posible":"");
+    el.setAttribute("aria-label",lbl);
+  }
+  if(G.flash>=0){const el=cells[G.flash]; void el.offsetWidth; el.classList.add("flash");}
+
+  // Turno
+  const t=document.getElementById("turn");
+  if(G.winner==="draw") t.innerHTML=`${glyph("M",0)}<div><div class="who">Tablas</div><div class="sub">${G.reason}</div></div>`;
+  else if(G.winner!==null) t.innerHTML=`${glyph("M",G.winner)}<div><div class="who">Gana ${SIDE[G.winner]}</div><div class="sub">${G.reason}</div></div>`;
+  else {
+    const sub=G.thinking?"La Luna está pensando…":(danger>=0?"¡Tu Monarca está amenazado!":(G.mode==="ia"?"Tu turno":"Mueve "+SIDE[G.turn]));
+    t.innerHTML=`${glyph("M",G.turn)}<div><div class="who">Turno de ${SIDE[G.turn]}</div><div class="sub">${sub}</div></div>`;
+  }
+  // Overlay
+  if(G.winner!==null){
+    overlay.hidden=false;
+    const title=G.winner==="draw"?"Tablas":`Gana ${SIDE[G.winner]}`;
+    overlay.innerHTML=`<div class="card">${G.winner==="draw"?"":glyph("M",G.winner).replace('class="pc"','width="56" height="56"')}<h2>${title}</h2><p>${G.winner==="draw"?"":SIDE[G.winner]+" "}${G.reason}.</p><button class="btn primary" id="again">Jugar otra vez</button></div>`;
+    document.getElementById("again").onclick=()=>{G=fresh(G.mode,G.level);render();};
+  } else overlay.hidden=true;
+
+  // Controles
+  for(const btn of document.querySelectorAll("#mode button")) btn.setAttribute("aria-pressed",String(btn.dataset.v===G.mode));
+  for(const btn of document.querySelectorAll("#level button")) btn.setAttribute("aria-pressed",String(+btn.dataset.v===G.level));
+  document.getElementById("levelBox").hidden=G.mode!=="ia";
+  document.getElementById("undo").disabled=!G.hist.length||G.thinking;
+
+  // Capturas
+  for(const s of[0,1]){
+    const list=G.caps[s].slice().sort((a,b)=>VAL[b]-VAL[a]);
+    document.getElementById("tray"+s).innerHTML=list.length?list.map(x=>glyph(x,1-s).replace('class="pc"','')).join(""):`<span class="none">Ninguna aún</span>`;
+  }
+  // Registro
+  const log=document.getElementById("log");
+  if(!G.log.length) log.innerHTML=`<span class="empty">Las jugadas aparecerán aquí.</span>`;
+  else { let h=""; for(let i=0;i<G.log.length;i+=2) h+=`<span class="n">${i/2+1}.</span><span>${G.log[i]}</span><span>${G.log[i+1]||""}</span>`; log.innerHTML=h; log.scrollTop=log.scrollHeight; }
+}
+
+document.getElementById("mode").addEventListener("click",e=>{
+  const v=e.target.closest("button")?.dataset.v; if(!v||v===G.mode) return;
+  G=fresh(v,G.level); render();
+});
+document.getElementById("level").addEventListener("click",e=>{
+  const v=+e.target.closest("button")?.dataset.v; if(!v) return; G.level=v; render();
+});
+document.getElementById("newGame").onclick=()=>{ if(G.thinking) return; G=fresh(G.mode,G.level); render(); };
+document.getElementById("undo").onclick=undo;
+
+// Leyenda de piezas
+const DESC=[
+  ["M","Monarca","Un paso en cualquier dirección. Si lo capturan, pierdes; si sobrevive un turno en el Núcleo, ganas."],
+  ["O","Oráculo","Se desliza hasta 3 casillas en cualquiera de las 8 direcciones. Reemplaza a la dama."],
+  ["A","Arquero","Camina 1 paso sin capturar. Dispara a un enemigo a exactamente 2 casillas en línea, saltando lo que haya en medio, sin moverse."],
+  ["B","Bastión","Se desliza en línea recta como la torre y escuda a las fichas aliadas que tiene al lado."],
+  ["E","Espectro","Se desliza en diagonal y puede atravesar una ficha (aliada o enemiga) por jugada."],
+  ["S","Saltador","Salta como el caballo o exactamente 2 casillas en línea recta. 12 destinos posibles."],
+  ["P","Brote","Avanza 1 o se mueve 1 de lado; captura en diagonal hacia delante. Al llegar al final se convierte en Oráculo."],
+];
+document.getElementById("pieces").innerHTML=DESC.map(([t,n,d],k)=>`<div class="piece">${glyph(t,k%2).replace('class="pc"','')}<div><h3>${n}<span>${t==="P"?"—":t}</span></h3><p>${d}</p></div></div>`).join("");
+
+// Recarga en caliente
+function start(data){
+  const s=data&&data.state;
+  G=(s&&Array.isArray(s.board)&&s.board.length===81)?Object.assign(fresh(),s,{thinking:false,sel:-1,moves:[]}):fresh();
+  render();
+  if(!G.winner&&G.mode==="ia"&&G.turn===1) aiTurn();
+}
+window.claude?.hot?.snapshot?.(()=>({state:Object.assign({},G,{hist:[]})}));
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
