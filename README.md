@@ -1,10 +1,19 @@
-# Aplicacion — Registro de Caja
+# Control Bóveda de Casino
 
-Abre `index.html` en el navegador.
+Abre `index.html` en el navegador (funciona también en el celular).
 
-- Elige un día (lista del mes o "Ir a fecha") y se despliega el formulario.
-- Campos por día: Izipay, Ganancia, Pérdida, Reposición a caja, Reposición externo.
-- Gastos o Retiros: agrega tantos como necesites (tipo, concepto, monto).
-- Neto del día = Ganancia + Reposiciones − Pérdida − Gastos − Retiros (Izipay se muestra aparte).
-- Resumen del mes arriba y exportación a CSV.
-- Los datos se guardan automáticamente en el navegador (localStorage).
+## Uso
+1. **Seleccionar fecha:** en el calendario toca uno o más días; se abre un formulario por cada día.
+2. **Izipay:** venta del día (S/). Se registra aparte, no mueve la bóveda.
+3. **Ganancia o pérdida en caja:**
+   - Ganancia → ingresa a bóveda.
+   - Pérdida → se saca de bóveda para completar la caja.
+4. **Reposición a caja:** se calcula sola (= la pérdida).
+5. **Incremento externo:** si la bóveda no alcanza para reponer la caja, lo que falta se calcula solo
+   como incremento externo. También puedes escribir el monto a mano (déjalo vacío para que vuelva a ser automático).
+6. **Gastos o retiros:** salen de bóveda.
+
+Arriba se ve el **saldo actual de bóveda** (empieza en el "saldo inicial" que configures).
+Cada día muestra la bóveda al inicio y al cierre. Abajo hay un resumen del mes y exportación a CSV.
+
+Los datos se guardan automáticamente en el navegador (localStorage), solo en ese dispositivo.
